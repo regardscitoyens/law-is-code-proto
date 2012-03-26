@@ -22,13 +22,13 @@ texte = {"type": "texte", "source": url}
 if re.search(r"assemblee-?nationale", url):
   m = re.search(r"/(\d+)/.+/(ta)?[\w\-]*(\d{4})[\.\-]", url)
   texte["id"] = "A" + m.group(1) + "-"
-  if not m.group(2) is None:
+  if m.group(2) is not None:
     texte["id"] += m.group(2)
   texte["id"] += m.group(3)
 else:
   m = re.search(r"(ta)?s?(\d\d)-(\d{1,3})\.", url)
   texte["id"] = "S" + m.group(2) + "-"
-  if not m.group(1) is None:
+  if m.group(1) is not None:
     texte["id"] += m.group(1)
   texte["id"] += "%03d" % int(m.group(3))
 
@@ -49,32 +49,24 @@ def romans(n):
   return res
 
 # Clean html and special chars
-r_ws  = re.compile(r" ");
-r_oe  = re.compile(r"œ", re.I)
-r_fqu = re.compile(r'(«\s+|\s+»)')
-r_quo = re.compile(r'(«|»|“|”|„|‟|❝|❞|＂|〟|〞|〝)')
-r_apo = re.compile(r"(’|＇|’|ߴ|՚|ʼ|❛|❜)")
-r_das = re.compile(r"(‒|–|—|―|⁓|‑|‐|⁃|⏤)")
-r_att = re.compile(r"(</?\w+)[^>]*>")
-r_em  = re.compile(r"(</?)em>", re.I)
-r_str = re.compile(r"(</?)strong>", re.I)
-r_com = re.compile(r"<(![^>]*|/?(p|br/?|span))>", re.I)
-r_brk = re.compile(r"\s*\n+\s*")
-r_mws = re.compile(r"\s+")
+html_replace = [
+  (re.compile(r" "), " "),
+  (re.compile(r"œ", re.I), "oe"),
+  (re.compile(r'(«\s+|\s+»)'), '"'),
+  (re.compile(r'(«|»|“|”|„|‟|❝|❞|＂|〟|〞|〝)'), '"'),
+  (re.compile(r"(’|＇|’|ߴ|՚|ʼ|❛|❜)"), "'"),
+  (re.compile(r"(‒|–|—|―|⁓|‑|‐|⁃|⏤)"), "-"),
+  (re.compile(r"(</?\w+)[^>]*>"), r"\1>"),
+  (re.compile(r"(</?)em>", re.I), r"\1i>"),
+  (re.compile(r"(</?)strong>", re.I), r"\1b>"),
+  (re.compile(r"<(![^>]*|/?(p|br/?|span))>", re.I), ""),
+  (re.compile(r"\s*\n+\s*"), " "),
+  (re.compile(r"\s+"), " ")
+]
 def clean_html(t):
-  l =  r_ws.sub(" ", str(t))
-  l =  r_oe.sub("oe", l)
-  l = r_fqu.sub('"', l)
-  l = r_quo.sub('"', l)
-  l = r_apo.sub("'", l)
-  l = r_das.sub("-", l)
-  l = r_att.sub(r"\1>", l)
-  l =  r_em.sub(r"\1i>", l)
-  l = r_str.sub(r"\1b>", l)
-  l = r_com.sub("", l)
-  l = r_brk.sub(" ", l)
-  l = r_mws.sub(" ", l)
-  return l.strip()
+  for regex, repl in html_replace:
+    t = regex.sub(repl, t)
+  return t.strip()
 
 def pr_js(a):
   print json.dumps(a, sort_keys=True, indent=1, ensure_ascii=False).encode("utf-8")
@@ -94,13 +86,13 @@ section_id = ""
 article = None
 section = {"type": "section", "id": ""}
 for text in soup.find_all("p"):
-  line = clean_html(text)
+  line = clean_html(str(text))
   #print read, line
   if re_mat_ppl.match(line):
     read = 0
-    if not texte.has_key("done"):
+    if "done" in texte:
       pr_js(texte)
-    texte["done"] = 1
+    texte["done"] = True
   elif re_mat_exp.match(line):
     read = -1 # Deactivate description lecture
   elif read == -1:
@@ -111,7 +103,7 @@ for text in soup.find_all("p"):
     m = re_mat_sec.match(line)
     section["type_section"] = m.group(1).lower()
     section_typ = m.group(1).upper()[0]
-    if not m.group(3) is None:
+    if m.group(3) is not None:
       section_typ += "S"
     section_num = re_cl_uno.sub("1", m.group(4).strip())
     if re.match(r"\D", m.group(4)):
@@ -124,7 +116,7 @@ for text in soup.find_all("p"):
     line = re_cl_html.sub("", line).strip()
     # Read a new article
     if re_mat_art.match(line):
-      if not article is None:
+      if article is not None:
         pr_js(article)
       read = 2 # Activate alineas lecture
       art_num += 1
@@ -132,14 +124,14 @@ for text in soup.find_all("p"):
       article = {"type": "article", "num": art_num, "alineas": {}}
       m = re_mat_art.match(line)
       article["titre"] = re_cl_uno.sub("1", m.group(1).strip())
-      if not m.group(2) is None:
+      if m.group(2) is not None:
         article["statut"] = re_cl_par.sub("", str(m.group(2)).lower()).strip()
-      if not section["id"] == "":
+      if section["id"] != "":
         article["section"] = section["id"]
     # Read a section's title
     elif read == 1:
       section["titre"] = line
-      if not article is None:
+      if article is not None:
         pr_js(article)
         article = None
       pr_js(section)
