@@ -35,13 +35,14 @@ def write_json(j, p):
 re_cl_ids = re.compile(r"\s+")
 
 replace_str = [
-  (re.compile(r'"'), " "),
-  (re.compile(r"^[IVXLCDM]+\.?\s*-?\s*"), ""),
+  (re.compile(r'"'), ""),
+  (re.compile(r"^[IVXLCDM]+[\.\s-]+"), ""),
+  (re.compile(r"^([0-9]+|[a-z])[°)\s]+"), ""),
   (re.compile(r"\s+"), " ")
 ]
 def clean_text(t):
   for regex, repl in replace_str:
-    t = regex.sub(repl, t)
+    t = regex.sub(repl, t.strip())
 #  return t
   return t.strip()
 
