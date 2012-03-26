@@ -1,8 +1,13 @@
 #!/usr/bin/python
 # -*- coding=utf-8 -*-
-"""Doc courte
+"""Common law parser for AN/Sénat
 
-Doc longue"""
+Run with python parse_texte.py LAW_FILE
+where LAW_FILE results from perl download_loi.pl URL > LAW_FILE
+Outputs results to stdout
+
+Dependencies :
+html5lib, beautifulsoup4, simplejson"""
 
 import sys, re, html5lib
 import simplejson as json
@@ -12,7 +17,7 @@ try:
   FILE = sys.argv[1] 
   soup = BeautifulSoup(open(FILE,"r"), "html5lib")
 except: 
-  print "Erreur d'ouverture du fichier", FILE
+  print "ERROR: Cannot open file", FILE
   sys.exit() 
 
 url = re.sub(r"^.*/http", "http", FILE)
@@ -69,7 +74,8 @@ def clean_html(t):
   return t.strip()
 
 def pr_js(a):
-  print json.dumps(a, sort_keys=True, indent=1, ensure_ascii=False).encode("utf-8")
+  print json.dumps(a, sort_keys=True, ensure_ascii=False).encode("utf-8")
+#  print json.dumps(a, sort_keys=True, indent=1, ensure_ascii=False).encode("utf-8")
 
 re_cl_html = re.compile(r"<[^>]+>")
 re_cl_par  = re.compile(r"(\(|\))")
@@ -90,7 +96,7 @@ for text in soup.find_all("p"):
   #print read, line
   if re_mat_ppl.match(line):
     read = 0
-    if "done" in texte:
+    if "done" not in texte:
       pr_js(texte)
     texte["done"] = True
   elif re_mat_exp.match(line):
