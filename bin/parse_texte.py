@@ -4,7 +4,8 @@
 
 Doc longue"""
 
-import sys, re, json, html5lib
+import sys, re, html5lib
+import simplejson as json
 from bs4 import BeautifulSoup
 
 try:
@@ -57,7 +58,7 @@ r_das = re.compile(r"(‒|–|—|―|⁓|‑|‐|⁃|⏤)")
 r_att = re.compile(r"(</?\w+)[^>]*>")
 r_em  = re.compile(r"(</?)em>", re.I)
 r_str = re.compile(r"(</?)strong>", re.I)
-r_com = re.compile(r"<(![^>]*|/?(p|span))>", re.I)
+r_com = re.compile(r"<(![^>]*|/?(p|br/?|span))>", re.I)
 r_brk = re.compile(r"\s*\n+\s*")
 r_mws = re.compile(r"\s+")
 def clean_html(t):
@@ -76,7 +77,7 @@ def clean_html(t):
   return l.strip()
 
 def pr_js(a):
-  print json.dumps(a, sort_keys=True, indent=1, ensure_ascii=False)
+  print json.dumps(a, sort_keys=True, indent=1, ensure_ascii=False).encode("utf-8")
 
 re_cl_html = re.compile(r"<[^>]+>")
 re_cl_par  = re.compile(r"(\(|\))")
@@ -133,8 +134,8 @@ for text in soup.find_all("p"):
       article["titre"] = re_cl_uno.sub("1", m.group(1).strip())
       if not m.group(2) is None:
         article["statut"] = re_cl_par.sub("", str(m.group(2)).lower()).strip()
-      if not section_id == "":
-        article["section"] = section_id
+      if not section["id"] == "":
+        article["section"] = section["id"]
     # Read a section's title
     elif read == 1:
       section["titre"] = line
