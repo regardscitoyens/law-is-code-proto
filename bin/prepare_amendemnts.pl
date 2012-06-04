@@ -6,6 +6,9 @@
 while ($l = <STDIN>) {
 	chomp($l);
 	$org = $l;
+	$l =~ s/,,/,"",/g;
+	@champs = split(/","/, $l);
+	$l = $champs[10];
 
 	if ($l =~ /alinéa (\d+)/i) {
 		$alinea = $1;
@@ -21,11 +24,9 @@ while ($l = <STDIN>) {
 	$action = '';
 	if ($l =~ /substituer|remplacer/i) {
 		$action = 'remplace';
-	}
-	if ($l =~ /supprimer/i) {
+	}elsif ($l =~ /supprimer/i) {
 		$action = 'supprime';
-	}
-	if ($l =~ /ajouter|compléter|insérer|rédiger/i) {
+	}elsif ($l =~ /ajout[eé]|complét[eé]|insér[eé]|rédig[eé]/i) {
 		$action = "ajout";
 	}
 
