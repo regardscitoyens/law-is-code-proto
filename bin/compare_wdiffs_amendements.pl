@@ -5,7 +5,7 @@ my $wdiffile = shift;
 my $amdtfile = shift;
 my $nbalineas = shift;
 my %actions = ('supprime' => -1, 'remplace' => 0, 'ajout' => 1);
-
+my $verbose = shift;
 
 sub cleanAndCountMots {
     my $mots = shift;
@@ -87,34 +87,49 @@ sub compareAlineas {
     return abs($a1->{'alinea'} - $a2->{'alinea'}) / $nbalineas;
 }
 
-sub compareMots {
-    my $a1 = shift;
-    my $a2 = shift;
-    my $nbmots = length(join('', (keys %{$a1->{'mots'}})).join('', (keys %{$a2->{'mots'}})));
-    my $nbcommuns = 1;
-    foreach my $mot (keys %{$a1->{'mots'}}) {
-	if ($a2->{'mots'}{$mot}) {
+sub compareMotsCommuns {
+    my $diff = shift;
+    my $amdt = shift;
+    my $nbmots = length(join('', (keys %{$diff->{'mots'}})).join('', (keys %{$amdt->{'mots'}})));
+    my $nbcommuns = 0;
+    foreach my $mot (keys %{$diff->{'mots'}}) {
+	if ($amdt->{'mots'}{$mot}) {
 	    $nbcommuns += length($mot);
 	}
     }
+    #si pas de mots dans amendements, pas de mots communs
+    return 1 if (!scalar(keys(%{$amdt->{'mots'}})));
     return 1 - ($nbcommuns / ($nbmots / 2));
+    
+}
+
+sub compareMotsRestants {
+    my $diff = shift;
+    my $amdt = shift;
+    my $nbmots = length(join('', (keys %{$diff->{'mots'}})).join('', (keys %{$amdt->{'mots'}})));
+    my $nbrestants = scalar(keys(%{$amdt->{'mots'}}));
+    return ($nbrestants / ($nbmots / 2));
 }
 
 sub compare {
-    my $a1 = shift;
-    my $a2 = shift;
-    print $a1->{'action'}."\t".$a1->{'alinea'}."\t".$a1->{'debug'}."\n";
-    print $a2->{'action'}."\t".$a2->{'alinea'}."\t".$a2->{'debug'}."\n";
-    print "\n";
-    my $action = compareAction($a1, $a2);
-    my $alinea = compareAlineas($a1, $a2);
-    my $mots = compareMots($a1, $a2);
-    print "action: $action\n";
-    print "alinea: $alinea\n";
-    print "mots: $mots\n";
-    print "=====================================\n";
-    print "moyenne : ".(($action + $alinea + $mots) / 3)."\n";
-    print "=====================================\n";
+    my $diff = shift;
+    my $amdt = shift;
+    my $action = compareAction($diff, $amdt);
+    my $alinea = compareAlineas($diff, $amdt);
+    my $mcommuns = compareMotsCommuns($diff, $amdt);
+    my $moy = (($action + $alinea + $mcommuns) / 3);
+    if ($verbose) {
+	print $diff->{'action'}."\t".$diff->{'alinea'}."\t".$diff->{'debug'}."\n";
+	print $amdt->{'action'}."\t".$amdt->{'alinea'}."\t".$amdt->{'debug'}."\n";
+	print "\n";
+	print "action: $action\n";
+	print "alinea: $alinea\n";
+	print "communs: $mcommuns\n";
+	print "=====================================\n";
+	print "moyenne : $moy\n";
+	print "=====================================\n";
+    }
+    return $moy;
 }
 
 open(WDIFF, $wdiffile);
@@ -144,6 +159,7 @@ while(<AMDT>) {
 }
 close AMDT;
 
+#Identifie les amendements identiques
 foreach my $alin (keys %amdts) {
     foreach my $a1id (keys %{$amdts{$alin}}) {
 	foreach my $a2id (keys %{$amdts{$alin}}) {
@@ -154,34 +170,42 @@ foreach my $alin (keys %amdts) {
 	}
     }
 }
-
+#Identifie les sous amendements
 foreach my $id (keys %ssamdts) {
     foreach $a (@{$ssamdts{$id}}) {
 	$amdts{$amendtalinea{$id}}{$id} = sousamendement($a, $amdts{$amendtalinea{$id}}{$id});
     }
 }
-
-foreach my $alinea (keys %wdiff) {
-    print "alinea $alinea\n";
-    foreach my $diff (@{$wdiff{$alinea}}) {
-	foreach my $idamendt (keys %{$amdts{$alinea}}) {
-	    if (isAIdentiq($diff, $amdts{$alinea}{$idamendt})) {
-		print "$idamendt TROUVÉ !!\n";
-		delete($wdiff{$alinea});
-		delete($amdts{$alinea}{$idamendt});
+my $deleted = 1;
+while($deleted) {
+    $deleted = 0;
+    my $min = 1;
+    my %minid = ('wdiff_alinea' => -1, 'wdiff_id' => -1, 'amdt_alinea' => -1, 'amdt_id' => -1);
+    foreach my $a_alinea (sort {$a <=> $b} keys %amdts) {
+#	    $a_alinea = 24;
+	foreach my $idamendt (keys %{$amdts{$a_alinea}}) {
+	    foreach my $alinea (sort {$a <=> $b} keys %wdiff) {
+#    $alinea = $a_alinea;
+		for(my $i = 0 ; $i <= $#{$wdiff{$alinea}} ; $i++) {
+		    my $diff = $wdiff{$alinea}[$i];
+		    my $moy = compare($diff, $amdts{$a_alinea}{$idamendt});
+		    if ($moy < $min) {
+			%minid = ('wdiff_alinea' => $alinea, 'wdiff_id' => $i, 'amdt_alinea' => $a_alinea, 'amdt_id' => $idamendt);
+			$min = $moy;
+		    }
+		}
 	    }
 	}
     }
-}
-foreach my $a_alinea (sort {$a <=> $b} keys %amdts) {
-#	    $a_alinea = 24;
-    foreach my $idamendt (keys %{$amdts{$a_alinea}}) {
-	foreach my $alinea (sort {$a <=> $b} keys %wdiff) {
-#    $alinea = $a_alinea;
-	    foreach my $diff (@{$wdiff{$alinea}}) {
-		compare($diff, $amdts{$a_alinea}{$idamendt});
-	    }
-	}
+    if ($minid{'wdiff_alinea'} > -1) {
+	print "======================================\n";
+	print "$min ".join(' ', %minid)."\n";
+	print $wdiff{$minid{'wdiff_alinea'}}[$minid{'wdiff_id'}]{'debug'}."\n";
+	print $amdts{$minid{'amdt_alinea'}}{$minid{'amdt_id'}}{'debug'}."\n";
+	print "======================================\n";
+	delete($wdiff{$minid{'wdiff_alinea'}}[$minid{'wdiff_id'}]);
+	delete($amdts{$minid{'amdt_alinea'}}{$minid{'amdt_id'}});
+	$deleted = 1;
     }
 }
 exit;		
