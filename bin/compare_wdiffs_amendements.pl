@@ -4,6 +4,7 @@ use strict;
 my $wdiffile = shift;
 my $amdtfile = shift;
 my $nbalineas = shift;
+my $correspondancefile = shift;
 my %actions = ('supprime' => -1, 'remplace' => 0, 'ajout' => 1);
 my $verbose = shift;
 
@@ -103,12 +104,11 @@ sub compareMotsCommuns {
     
 }
 
-sub compareMotsRestants {
+sub compareNbMots {
     my $diff = shift;
     my $amdt = shift;
-    my $nbmots = length(join('', (keys %{$diff->{'mots'}})).join('', (keys %{$amdt->{'mots'}})));
-    my $nbrestants = scalar(keys(%{$amdt->{'mots'}}));
-    return ($nbrestants / ($nbmots / 2));
+    my $nbrestants = scalar(keys(%{$amdt->{'mots'}})) + scalar(keys(%{$diff->{'mots'}})) ;
+    return $nbrestants / 100;
 }
 
 sub compare {
@@ -117,7 +117,7 @@ sub compare {
     my $action = compareAction($diff, $amdt);
     my $alinea = compareAlineas($diff, $amdt);
     my $mcommuns = compareMotsCommuns($diff, $amdt);
-    my $moy = (($action + $alinea + $mcommuns) / 3);
+    my $dist = sqrt($action*$action + $alinea*$alinea + $mcommuns*$mcommuns);
     if ($verbose) {
 	print $diff->{'action'}."\t".$diff->{'alinea'}."\t".$diff->{'debug'}."\n";
 	print $amdt->{'action'}."\t".$amdt->{'alinea'}."\t".$amdt->{'debug'}."\n";
@@ -126,18 +126,35 @@ sub compare {
 	print "alinea: $alinea\n";
 	print "communs: $mcommuns\n";
 	print "=====================================\n";
-	print "moyenne : $moy\n";
+	print "distance : $dist\n";
 	print "=====================================\n";
     }
-    return $moy;
+    my $nb_mots_amdmt = scalar(keys %{$amdt->{'mots'}})/1000;
+    my $nb_mots_diff  = scalar(keys %{$diff->{'mots'}})/1000;
+    return ('distance' => $dist, 'action' => $action, 'alinea'=>$alinea, 'mots_communs'=>$mcommuns, 'nb_mots_amdmt'=>$nb_mots_amdmt, 'nb_mots_diff'=>$nb_mots_diff, 'distance_nb_mots' => abs($nb_mots_amdmt - $nb_mots_diff));
 }
+
+my %correspondance_wdiff_amdt;
+open(CORR, $correspondancefile);
+while(<CORR>) {
+    s/ //g;
+    my @csv = split /;/;
+    my @wdiff = split /,/, $csv[1];
+    foreach my $wd (@wdiff) {
+	print $wd." ".$csv[0]."\n" if($verbose);
+	$correspondance_wdiff_amdt{$wd}{$csv[0]} = 1;
+    }
+}
+close(CORR);
 
 open(WDIFF, $wdiffile);
 my %wdiff = ();
+my $numligne = 0;
 while (<WDIFF>) {
     chomp;
     my @split = split /\t/;
-    push @{$wdiff{$split[0]}}, {'alinea' => $split[0], 'action' => $split[1], 'mots' => cleanAndCountMots($split[2], $split[1]), 'debug' => $split[3]};
+    $numligne++;
+    push @{$wdiff{$split[0]}}, {'alinea' => $split[0], 'action' => $split[1], 'mots' => cleanAndCountMots($split[2], $split[1]), 'debug' => $split[3], 'numligne' => $numligne};
 }
 close WDIFF;
 
@@ -176,44 +193,44 @@ foreach my $id (keys %ssamdts) {
 	$amdts{$amendtalinea{$id}}{$id} = sousamendement($a, $amdts{$amendtalinea{$id}}{$id});
     }
 }
-my $deleted = 1;
-while($deleted) {
-    $deleted = 0;
-    my $min = 1;
-    my %minid = ('wdiff_alinea' => -1, 'wdiff_id' => -1, 'amdt_alinea' => -1, 'amdt_id' => -1);
-    foreach my $a_alinea (sort {$a <=> $b} keys %amdts) {
-#	    $a_alinea = 24;
-	foreach my $idamendt (keys %{$amdts{$a_alinea}}) {
-	    foreach my $alinea (sort {$a <=> $b} keys %wdiff) {
-#    $alinea = $a_alinea;
-		for(my $i = 0 ; $i <= $#{$wdiff{$alinea}} ; $i++) {
-		    my $diff = $wdiff{$alinea}[$i];
-		    my $moy = compare($diff, $amdts{$a_alinea}{$idamendt});
-		    if ($moy < $min) {
-			%minid = ('wdiff_alinea' => $alinea, 'wdiff_id' => $i, 'amdt_alinea' => $a_alinea, 'amdt_id' => $idamendt);
-			$min = $moy;
-		    }
+
+my %proba;
+#Compare le score de chaq amendement avec chaq wdiff
+foreach my $a_alinea (sort {$a <=> $b} keys %amdts) {
+    foreach my $idamendt (keys %{$amdts{$a_alinea}}) {
+	foreach my $alinea (sort {$a <=> $b} keys %wdiff) {
+	    for(my $i = 0 ; $i <= $#{$wdiff{$alinea}} ; $i++) {
+		my $diff = $wdiff{$alinea}[$i];
+		printf "amdmt: %05d",$idamendt if ($verbose);
+		printf " wdiff: %05d", $diff->{'numligne'} if ($verbose);
+		print " " if ($verbose);
+		my %compare = compare($diff, $amdts{$a_alinea}{$idamendt});
+		foreach my $type (qw(distance alinea action mots_communs nb_mots_amdmt nb_mots_diff distance_nb_mots)) {
+		    my $key = sprintf("%02.3f", $compare{$type});
+		    printf "$type:$key" if ($verbose);
+		    $proba{$type}{$key}{'nb_occur'}++;
+		    $proba{$type}{$key}{'nb_match'} += $correspondance_wdiff_amdt{$diff->{'numligne'}}{$idamendt};
 		}
+		if ($correspondance_wdiff_amdt{$diff->{'numligne'}}{$idamendt}) {
+		    print '1'  if ($verbose);
+		}else{
+		    print '0'  if ($verbose);
+		}
+		print " -- \n" if ($verbose);
 	    }
 	}
     }
-    if ($minid{'wdiff_alinea'} > -1) {
-	print "======================================\n";
-	print "$min ".join(' ', %minid)."\n";
-	print $wdiff{$minid{'wdiff_alinea'}}[$minid{'wdiff_id'}]{'debug'}."\n";
-	print $amdts{$minid{'amdt_alinea'}}{$minid{'amdt_id'}}{'debug'}."\n";
-	print "======================================\n";
-	delete($wdiff{$minid{'wdiff_alinea'}}[$minid{'wdiff_id'}]);
-	delete($amdts{$minid{'amdt_alinea'}}{$minid{'amdt_id'}});
-	$deleted = 1;
+}
+
+foreach my $type (keys %proba) {
+    print ";;\n$type;valeur;proba match;nb occurence\n";
+    for(my $i = 0 ; $i <= 1.001 ; $i += 0.001) {
+	my $key = sprintf("%02.3f", $i);
+	if (!$proba{$type}{$key}{'nb_occur'}) {
+#	    printf "$type;%.3f;%.3f\n", $i, 0;
+	}else{
+	    printf "$type;%.3f;%02.3f;%d\n", $i, $proba{$type}{$key}{'nb_match'}/$proba{$type}{$key}{'nb_occur'},$proba{$type}{$key}{'nb_occur'};
+	}
     }
 }
-exit;		
-
-foreach my $alinea (sort {$a <=> $b} keys %amdts) {
-    print "alinea $alinea :\n texte : ";
-    print Dumper($wdiff{$alinea});
-    print " amendements : ";
-    print Dumper($amdts{$alinea});
-    print "======================================\n";
-}
+exit;
