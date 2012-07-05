@@ -5,8 +5,10 @@ my $wdiffile = shift;
 my $amdtfile = shift;
 my $nbalineas = shift;
 my $correspondancefile = shift;
+my $coeffile = shift;
 my %actions = ('supprime' => -1, 'remplace' => 0, 'ajout' => 1);
 my $verbose = shift;
+my @types = qw(alinea mots_communs nb_mots_amdmt distance_nb_mots action); # nb_mots_diff distance);
 
 sub cleanAndCountMots {
     my $mots = shift;
@@ -117,7 +119,7 @@ sub compare {
     my $action = compareAction($diff, $amdt);
     my $alinea = compareAlineas($diff, $amdt);
     my $mcommuns = compareMotsCommuns($diff, $amdt);
-    my $dist = sqrt($action*$action + $alinea*$alinea + $mcommuns*$mcommuns);
+    my $dist = 0; #sqrt($action*$action + $alinea*$alinea + $mcommuns*$mcommuns);
     if ($verbose) {
 	print $diff->{'action'}."\t".$diff->{'alinea'}."\t".$diff->{'debug'}."\n";
 	print $amdt->{'action'}."\t".$amdt->{'alinea'}."\t".$amdt->{'debug'}."\n";
@@ -194,6 +196,10 @@ foreach my $id (keys %ssamdts) {
     }
 }
 
+sub roundKey {
+    return sprintf("%02.3f", int(shift()*1000 + 0.5)/1000)
+}
+
 my %proba;
 #Compare le score de chaq amendement avec chaq wdiff
 foreach my $a_alinea (sort {$a <=> $b} keys %amdts) {
@@ -205,8 +211,8 @@ foreach my $a_alinea (sort {$a <=> $b} keys %amdts) {
 		printf " wdiff: %05d", $diff->{'numligne'} if ($verbose);
 		print " " if ($verbose);
 		my %compare = compare($diff, $amdts{$a_alinea}{$idamendt});
-		foreach my $type (qw(distance alinea action mots_communs nb_mots_amdmt nb_mots_diff distance_nb_mots)) {
-		    my $key = sprintf("%02.3f", $compare{$type});
+		foreach my $type (@types) {
+		    my $key = roundKey($compare{$type});
 		    printf "$type:$key" if ($verbose);
 		    $proba{$type}{$key}{'nb_occur'}++;
 		    $proba{$type}{$key}{'nb_match'} += $correspondance_wdiff_amdt{$diff->{'numligne'}}{$idamendt};
@@ -226,11 +232,129 @@ foreach my $type (keys %proba) {
     print ";;\n$type;valeur;proba match;nb occurence\n";
     for(my $i = 0 ; $i <= 1.001 ; $i += 0.001) {
 	my $key = sprintf("%02.3f", $i);
-	if (!$proba{$type}{$key}{'nb_occur'}) {
+	if ($proba{$type}{$key}{'nb_occur'}) {
+	    if ($proba{$type}{$key}{'nb_occur'} < 6) {
+		delete $proba{$type}{$key};
+	    }else {
+		$proba{$type}{$key}{'proba'} = $proba{$type}{$key}{'nb_match'}/$proba{$type}{$key}{'nb_occur'};
+		printf "$type;%.3f;%02.3f;%d\n", $i, $proba{$type}{$key}{'proba'},$proba{$type}{$key}{'nb_occur'};
+		$proba{$type}{'ratio'} = 0;	
+		$proba{$type}{'better_ratio'} = 0;
+		$proba{$type}{'current_ratio'} = 0;
+	    }
+#	}else{
 #	    printf "$type;%.3f;%.3f\n", $i, 0;
-	}else{
-	    printf "$type;%.3f;%02.3f;%d\n", $i, $proba{$type}{$key}{'nb_match'}/$proba{$type}{$key}{'nb_occur'},$proba{$type}{$key}{'nb_occur'};
 	}
     }
 }
-exit;
+
+
+my $increment = 1;
+my $max_valeur = 10;
+sub incrementerProba {
+    my $proba = shift;
+#    foreach my $type (@types) {
+    my $type;
+    for(my $i = 0 ; $i <= $#types ; $i++) {
+	for(my $y = $i ; $y <= $#types ; $y++) {
+	    $type = $types[$y];
+	    if ($proba->{$type}{'ratio'} > $max_valeur) {
+		$proba->{$type}{'ratio'} = 0;
+		$proba->{$types[$y + 1]}{'ratio'} += $increment;
+	    }elsif($y > $i) {
+		return 1;
+	    }else{
+		last;
+	    }
+	}
+	$type = $types[$i];
+	$proba->{$type}{'ratio'} += $increment;
+	return 1;
+    }
+    return 0;
+}
+
+sub learn {
+
+my %id2type;
+for(my $i = 0 ; $i < $#types ; $i++) {
+    $id2type{$types[$i]} = $i;
+}
+
+my $better_res = 0;
+
+while(incrementerProba(\%proba)) {
+    my $res = 0;
+    foreach my $a_alinea (sort {$a <=> $b} keys %amdts) {
+	foreach my $idamendt (keys %{$amdts{$a_alinea}}) {
+	    foreach my $alinea (sort {$a <=> $b} keys %wdiff) {
+		for(my $i = 0 ; $i <= $#{$wdiff{$alinea}} ; $i++) {
+		    my $diff = $wdiff{$alinea}[$i];
+		    my $rate = 0;
+		    my %compare = compare($diff, $amdts{$a_alinea}{$idamendt});
+		    foreach my $type (@types) {
+			$rate += $proba{$type}{'ratio'} * $proba{$type}{roundKey($compare{$type})}{'proba'};
+		    }
+		    if ($rate < 5 && !$correspondance_wdiff_amdt{$diff->{'numligne'}}{$idamendt}) {
+			$res += 1;
+			$res +=1 if ($rate < 3) ;
+		    }elsif ($rate > 5 && $correspondance_wdiff_amdt{$diff->{'numligne'}}{$idamendt}) {
+			$res += 1;
+			$res +=1 if ($rate > 7) ;
+		    }else{
+			$res -= 2;
+		    }
+		}
+	    }
+	}
+    }
+    if ($res > $better_res) {
+	print "\n";
+	foreach my $type (@types) {
+	    $proba{$type}{'better_ratio'} = $proba{$type}{'ratio'};
+	    print "$type : ".$proba{$type}{'better_ratio'}."\n";
+	}
+	$better_res = $res;
+	print "res: $res\n";
+    }
+}
+
+print "\n";
+foreach my $type (@types) {
+    print "$type : ".$proba{$type}{'better_ratio'}."\n";
+}
+
+}
+
+sub find {
+    open COEF, $coeffile;
+    while(<COEF>) {
+	chomp;
+	my @csv = split /;/;
+	$proba{$csv[0]}{'ratio'} = $csv[1];
+    }
+    close COEF;
+
+    foreach my $a_alinea (sort {$a <=> $b} keys %amdts) {
+	foreach my $idamendt (keys %{$amdts{$a_alinea}}) {
+	    foreach my $alinea (sort {$a <=> $b} keys %wdiff) {
+		for(my $i = 0 ; $i <= $#{$wdiff{$alinea}} ; $i++) {
+		    my $diff = $wdiff{$alinea}[$i];
+		    my $rate = 0;
+		    my %compare = compare($diff, $amdts{$a_alinea}{$idamendt});
+		    foreach my $type (@types) {
+			$rate += $proba{$type}{'ratio'} * $proba{$type}{roundKey($compare{$type})}{'proba'};
+		    }
+		    if ($rate > 5) {
+			print $idamendt.";".$diff->{'numligne'}.";$rate;";
+			print $correspondance_wdiff_amdt{$diff->{'numligne'}}{$idamendt};
+			print "\n";
+		    }
+		}
+	    }
+	}
+    }	
+}
+
+#learn();
+find();
