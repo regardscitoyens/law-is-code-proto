@@ -2,6 +2,20 @@
 # 
 # Réorganise un wdiff pour conserver les numéros de ligne du premier document
 
+sub cutSentence {
+    $str = shift;
+    $ret = "";
+    while ($str =~ s/([^\[\{]*)([\[\{][\+\-])([^\]\}]+)([\+\-][\]\}])//) {
+	$sepin = $2;
+	$ret .= $1.$sepin;
+	$sepout = $4;
+	$milieu = $3;
+	$milieu =~ s/\. ([A-Z][^\.])/\.$sepout $sepin$1/g;
+	$ret .= $milieu.$sepout;
+    }
+    return $ret.$str;
+}
+
 $ol = '';
 $suppr = 0;
 $ajout = 0;
@@ -19,7 +33,7 @@ while($l = <STDIN>) {
 			$ajout = 0;
 		}elsif ($suppr) {
 			chop($cn);
-			print $ol.'+}'.$cn.'{+';
+			print cutSentence($ol).'+}'.$cn.'{+';
 			$cn = $ol = '';
 			$suppr = 0;
 			$ajout = 1;
@@ -29,12 +43,13 @@ while($l = <STDIN>) {
 			$cn = '';
 		}
 	}else{
-		print $ol;
+		print cutSentence($ol);
 		print "\n" if ($ajout && $ol !~ /^[\d\s]*\{[^\}]+\}\s*$/);
-		print " $l $cn";
+		print " ";
+		print cutSentence($l);
+		print " $cn";
 		$ol = $cn = '';
 		$ajout = $suppr = 0;
 	}
-
 }
-print "$ol";
+print cutSentence($ol);
