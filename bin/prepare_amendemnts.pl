@@ -2,23 +2,25 @@
 #
 # Extrait les informations utiles des amendements et devine quelle opération unitaire il réalise
 #
+use encoding "utf8";
 
 while ($l = <STDIN>) {
 	chomp($l);
-	$org = $l;
 	$l =~ s/,,/,"",/g;
+	$org = $l;
 	@champs = split(/","/, $l);
 	$l = $champs[10];
+
+	while($l =~ s/(«[^»]+)«/\1/){}
+	$l =~ s/<\/p><p>//g;
 
 	if ($l =~ /alinéa (\d+)/i) {
 		$alinea = $1;
 	}
 
 	$mots_modifs = '';
-	while ($l =~ /«([^»<]+)[»<]/) {
-		if ($l =~ s/«([^»<]+)[»<]//) {
-			$mots_modifs .= " $1 ";
-		}
+	while ($l =~ /«+ *([^»]+) *»+/g) {
+	    $mots_modifs .= "$1\t";
 	}
 	
 	$action = '';
@@ -31,5 +33,5 @@ while ($l = <STDIN>) {
 	}
 
 	$mots_modifs =~ s/[,\.;:\?\!='-]/ /g;
-	print "$alinea\t$action\t$mots_modifs\t$org\n";
+	print "$alinea\t$action\t$mots_modifs\t\t$org\n";
 }
