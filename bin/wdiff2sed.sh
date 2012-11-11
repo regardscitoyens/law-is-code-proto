@@ -20,7 +20,7 @@ while read line; do
     else if test $ACTION = "ajout"; then
 	SEDEXP="$LINE,"$LINE"s|$PRECONTEXTE \*$POSTCONTEXTE|$PRECONTEXTE $CHANGEMENT $POSTCONTEXTE|";
     fi; fi; fi
-    echo $SEDEXP;
+    echo $SEDEXP | sed 's/\\\*/*/g';
 #    cat $1 | sed "$SEDEXP" > /tmp/diff.res
 #    if diff $1 /tmp/diff.res > /dev/null; then
 #	echo "ERROR sur $line ($SEDEXP)"
