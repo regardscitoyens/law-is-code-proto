@@ -10,7 +10,8 @@ sub cutSentence {
 	$ret .= $1.$sepin;
 	$sepout = $4;
 	$milieu = $3;
-	$milieu =~ s/\. ([A-Z][^\.])/\.$sepout $sepin$1/g;
+	$milieu =~ s/\. +([A-Z][^\.])/; $1/g;
+	$milieu =~ s/; /;$sepout $sepin$2/g;
 	$ret .= $milieu.$sepout;
     }
     return $ret.$str;
@@ -33,8 +34,8 @@ while($l = <STDIN>) {
 			$ajout = 0;
 		}elsif ($suppr) {
 			chop($cn);
-			print cutSentence($ol).'+}'.$cn.'{+';
-			$cn = $ol = '';
+#			print cutSentence($ol).'+}'.$cn.'{+';
+#			$cn = $ol = '';
 			$suppr = 0;
 			$ajout = 1;
 		}else{
