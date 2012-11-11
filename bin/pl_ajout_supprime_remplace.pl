@@ -3,7 +3,7 @@
 # extrait chaque opération unitaire d'un wdiff et détecte si c'est au ajour un remplacement ou une suppression
 
 use utf8;
-
+$id = 1;
 while(<STDIN>) {
     chomp;
 	$alinea = $1 if (/^(\d+)\t/);
@@ -20,8 +20,14 @@ while(<STDIN>) {
 		}
 		$mots = $4;
 		$contexte =~ s/\d+\t//;
-		$mots =~ s/\|/ /g;
-		$mots =~ s/[,\.;!?']/ /g;
-		print "$alinea\t$action\t$mots\t$tout\t$contexte\n";
+		$mots0 = $mots; $mots1 = '';
+		if ($mots =~ s/(.*)\|(.*)/\t/g) {
+		    $mots0 = $1;
+		    $mots1 = $2;
+		}
+		$mots0 =~ s/[,\.;!?']/ /g;
+		$mots1 =~ s/[,\.;!?']/ /g;
+		print "$alinea\t$action\t$mots0\t$mots1\t$id\t$tout\t$contexte\n";
+		$id++;
 	}
 }
