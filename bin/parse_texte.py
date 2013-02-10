@@ -66,7 +66,8 @@ html_replace = [
   (re.compile(r"(</?)strong>", re.I), r"\1b>"),
   (re.compile(r"<(![^>]*|/?(p|br/?|span))>", re.I), ""),
   (re.compile(r"\s*\n+\s*"), " "),
-  (re.compile(r"\s+"), " ")
+  (re.compile(r"\s+"), " "),
+  (re.compile(r"<[^>]*></[^>]*>"), "")
 ]
 def clean_html(t):
   for regex, repl in html_replace:
