@@ -16,6 +16,7 @@ from bs4 import BeautifulSoup
 try:
   FILE = sys.argv[1] 
   soup = BeautifulSoup(open(FILE,"r"), "html5lib")
+  ORDER = "%02d" % int(sys.argv[2])
 except: 
   print "ERROR: Cannot open file", FILE
   sys.exit() 
@@ -26,13 +27,13 @@ texte = {"type": "texte", "source": url}
 # Generate Senat or AN ID from URL
 if re.search(r"assemblee-?nationale", url):
   m = re.search(r"/(\d+)/.+/(ta)?[\w\-]*(\d{4})[\.\-]", url)
-  texte["id"] = "A" + m.group(1) + "-"
+  texte["id"] = ORDER+"_A" + m.group(1) + "-"
   if m.group(2) is not None:
     texte["id"] += m.group(2)
   texte["id"] += m.group(3)
 else:
   m = re.search(r"(ta)?s?(\d\d)-(\d{1,3})\.", url)
-  texte["id"] = "S" + m.group(2) + "-"
+  texte["id"] = ORDER+"_S" + m.group(2) + "-"
   if m.group(1) is not None:
     texte["id"] += m.group(1)
   texte["id"] += "%03d" % int(m.group(3))
@@ -54,6 +55,7 @@ def romans(n):
   return res
 
 # Clean html and special chars
+lower_inner_title = lambda x: x.group(1)+x.group(3).lower()
 html_replace = [
   (re.compile(r" "), " "),
   (re.compile(r"œ", re.I), "oe"),
@@ -67,7 +69,9 @@ html_replace = [
   (re.compile(r"<(![^>]*|/?(p|br/?|span))>", re.I), ""),
   (re.compile(r"\s*\n+\s*"), " "),
   (re.compile(r"\s+"), " "),
-  (re.compile(r"<[^>]*></[^>]*>"), "")
+  (re.compile(r"<[^>]*></[^>]*>"), ""),
+  (re.compile(r"^<b><i>", re.I), "<i><b>"),
+  (re.compile(r'^((<[^>]*>)*"[A-Z])([A-ZÉ]+ )'), lower_inner_title)
 ]
 def clean_html(t):
   for regex, repl in html_replace:
@@ -86,7 +90,11 @@ re_mat_art = re.compile(r"articles?\s+([^(]*)(\([^)]*\))?$", re.I)
 re_mat_ppl = re.compile(r"(<b>)?pro.* loi", re.I)
 re_mat_exp = re.compile(r"(<b>)?expos", re.I)
 re_mat_end = re.compile(r"(<i>Délibéré|Fait à .*, le)", re.I)
+re_mat_dots = re.compile(r"^[.…]+$")
 re_mat_st  = re.compile(r"<i>\(?(non\s?-?)?(conform|modif|suppr|nouveau)", re.I)
+re_mat_new = re.compile(r"\s*\(no(n[\-\s]modifié|uveau)\s*\)\s*", re.I)
+re_clean_idx_spaces = re.compile(r'^([IVXLCDM0-9]+)\s*\.\s*')
+re_clean_art_spaces = re.compile(r'^\s*"?\s+')
 
 read = art_num = ali_num = 0
 section_id = ""
@@ -151,9 +159,11 @@ for text in soup.find_all("p"):
     elif re_mat_st.match(line):
       article["statut"] = re_cl_html.sub("", re_cl_par.sub("", line.lower()).strip())
       continue
+    if re_mat_dots.match(line):
+      continue
+    line = re_clean_art_spaces.sub('', re_clean_idx_spaces.sub(r'\1. ', re_mat_new.sub(" ", re_cl_html.sub("", line)).strip()))
     ali_num += 1
-    line = re_cl_html.sub("", line)
-    article["alineas"][ali_num] = line.strip()
+    article["alineas"]["%03d" % ali_num] = line
   else:
     #metas
     continue
