@@ -1,9 +1,10 @@
 #!/bin/bash
 # List in order all versions of a text in a file named "NOM_DOSSIER.list"
 # Then run "bash bin/parse_dossier_textes.sh DOSSIER_NAME"
+# required : bash bin/install_dependencies.sh
 
 source /usr/local/bin/virtualenvwrapper.sh
-workon gitlaw
+workon LawFactory
 DOSSIER=$1
 
 if [ -z $DOSSIER ]; then
