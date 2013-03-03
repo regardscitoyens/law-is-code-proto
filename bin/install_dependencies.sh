@@ -2,7 +2,7 @@
 
 echo "Will first try to install virtualenv if not existing, will ask for sudo password"
 sudo pip install virtualenv
-sudo pip install virtualenv
+sudo pip install virtualenvwrapper
 source /usr/local/bin/virtualenvwrapper.sh
 mkvirtualenv --no-site-packages LawFactory
 workon LawFactory
