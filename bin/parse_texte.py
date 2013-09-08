@@ -21,7 +21,7 @@ except:
   sys.exit() 
 
 if (len(sys.argv) > 2) :
-  ORDER = "%02d" % int(sys.argv[2])
+  ORDER = "%02d_" % int(sys.argv[2])
 else:
   ORDER = ''
 
@@ -32,13 +32,13 @@ texte = {"type": "texte", "source": url}
 # Generate Senat or AN ID from URL
 if re.search(r"assemblee-?nationale", url):
   m = re.search(r"/(\d+)/.+/(ta)?[\w\-]*(\d{4})[\.\-]", url)
-  texte["id"] = ORDER+"_A" + m.group(1) + "-"
+  texte["id"] = ORDER+"A" + m.group(1) + "-"
   if m.group(2) is not None:
     texte["id"] += m.group(2)
   texte["id"] += m.group(3)
 else:
   m = re.search(r"(ta)?s?(\d\d)-(\d{1,3})\.", url)
-  texte["id"] = ORDER+"_S" + m.group(2) + "-"
+  texte["id"] = ORDER+"S" + m.group(2) + "-"
   if m.group(1) is not None:
     texte["id"] += m.group(1)
   texte["id"] += "%03d" % int(m.group(3))
