@@ -32,6 +32,13 @@ def write_text(t, p):
 def write_json(j, p):
   write_text(json.dumps(j, sort_keys=True, indent=1, ensure_ascii=False), p)
 
+def orderabledir(titre):
+  extrazero = ''
+  titre2num = int(re.compile(r"\D.*$").sub('', titre))
+  if (titre2num < 10):
+    extrazero = '0'
+  return extrazero+re_cl_ids.sub('_', titre)
+
 re_cl_ids = re.compile(r"\s+")
 
 replace_str = [
@@ -87,7 +94,7 @@ for l in f:
     path = ""
     if "section" in data:
       path = sec_path(data["section"])+"/"
-    path += "A"+re_cl_ids.sub('_', data["titre"])+"/"
+    path += "A"+orderabledir(data["titre"])+"/"
     mkdirs(path)
     write_json(data, path+textid+".json")
     text = ""
