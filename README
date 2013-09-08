@@ -1,6 +1,6 @@
 Generate data
 -------------
 
-bash bin/generate_data.sh DOSSIER.CSV
+bash bin/list_lois_promulguees.sh | while read url ; do perl bin/parse_dossier.pl $url ; done  > data/dossiers.csv
+bash bin/generate_data.sh data/dossiers.csv
 
-DOSSIER.CSV is a csv generated thanks to parse_dossier.pl from NosSénateurs.fr
