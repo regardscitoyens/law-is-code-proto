@@ -65,10 +65,10 @@ while ($ok) {
 	    $stade = "hemicycle";
 	}elsif ($img == 2) {
 	    $chambre = "senat";
-	    $stade = '';
+	    $stade = 'depot';
 	}elsif($img == 1) {
 	    $chambre = "assemblee";
-	    $stade = '';
+	    $stade = 'depot';
 	}
     }elsif($t->[0] eq 'a' && $t->[1]{href} !~ /^\#/) {
 	if ($t->[1]{href} =~ /\/dossiers\/([^\.]+)\./) {
@@ -84,14 +84,14 @@ while ($ok) {
 	    if ($url =~ /legifrance/) {
 		$url =~ s/;jsessionid=[^\?]*//;
 		$url =~ s/&.*//;		
-		$etape = "Promulgation";
-		$chambre = 'Gouvernement';
+		$etape = "promulgation";
+		$chambre = 'gouvernement';
 		$stade = 'JO';		
 		$printid = 'EXTRA';
 	    }elsif ($url =~ /conseil-constitutionnel/) {
 		$url =~ s/#.*//;
-		$etape = "Constitutionnalité";
-		$chambre = 'Conseil constitutionnel';
+		$etape = "constitutionnalité";
+		$chambre = 'conseil constitutionnel';
 		$stade = 'conforme';
 		if ($p->get_text('/li') =~ /\((.*)\)/) {
 		    $stade = $1;
