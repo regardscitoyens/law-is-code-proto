@@ -42,9 +42,9 @@ def orderabledir(titre):
 re_cl_ids = re.compile(r"\s+")
 
 replace_str = [
-  (re.compile(r'"'), ""),
-  (re.compile(r"^[IVXLCDM]+[\.\s-]+"), ""),
-  (re.compile(r"^([0-9]+|[a-z])[°)\s]+"), ""),
+#  (re.compile(r'"'), ""),
+#  (re.compile(r"^[IVXLCDM]+[\.\s-]+"), ""),
+#  (re.compile(r"^([0-9]+|[a-z])[°)\s]+"), ""),
   (re.compile(r"\s+"), " ")
 ]
 def clean_text(t):
@@ -101,7 +101,7 @@ for l in f:
     for i in range(len(data["alineas"])):
       if text != "":
         text += "\n"
-      text += clean_text(data["alineas"][str(i+1)])
+      text += clean_text(data["alineas"]["%03d" % (i+1)])
     write_text(text, path+textid+".alineas")
 
 f.close()

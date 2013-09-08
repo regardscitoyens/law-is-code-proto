@@ -16,7 +16,7 @@ if ($a->status() == 404) {
   return;
 }
 $htmfile = uri_escape($url);
-print "  $htmfile ... ";
+print "$htmfile";
 open FILE, ">:utf8", "html/$htmfile";
 $thecontent = $a->content;
 if ($thecontent =~ s/iso-8859-1/utf-8/gi) {
@@ -25,5 +25,4 @@ if ($thecontent =~ s/iso-8859-1/utf-8/gi) {
 print FILE $thecontent;
 close FILE;
 $a->back();
-print "downloaded.\n";
 
