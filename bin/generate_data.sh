@@ -7,7 +7,7 @@ fi
 
 cat $1 | while read line ; do 
   #Variables
-  dossier=$(echo $line | awk -F ';' '{print $1"_"$2"_"$3}')
+  dossier=$(echo $line | awk -F ';' '{print $1"_"$2"_"$3}' | sed 's/-//g')
   etape=$(echo $line | sed 's/ //g' | awk -F ';' '{print $4"_"$7"_"$6"_"$8}' | sed 's/_$/_depot/')
   projectdir=$dossier"/"$etape
   url=$(echo $line | awk -F ';' '{print $9}')
