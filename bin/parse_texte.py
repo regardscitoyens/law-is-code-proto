@@ -16,10 +16,15 @@ from bs4 import BeautifulSoup
 try:
   FILE = sys.argv[1] 
   soup = BeautifulSoup(open(FILE,"r"), "html5lib")
-  ORDER = "%02d" % int(sys.argv[2])
 except: 
   print "ERROR: Cannot open file", FILE
   sys.exit() 
+
+if (len(sys.argv) > 2) :
+  ORDER = "%02d" % int(sys.argv[2])
+else:
+  ORDER = ''
+
 
 url = re.sub(r"^.*/http", "http", FILE)
 url = re.sub(r"%3A", ":", re.sub(r"%2F", "/", url))
