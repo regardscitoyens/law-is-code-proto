@@ -1,0 +1,6 @@
+Generate data
+-------------
+
+bash bin/generate_data.sh DOSSIER.CSV
+
+DOSSIER.CSV is a csv generated thanks to parse_dossier.pl from NosSénateurs.fr
