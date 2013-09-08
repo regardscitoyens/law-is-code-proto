@@ -20,23 +20,17 @@ re_sec_path = re.compile(r"(\d)(\D)")
 def sec_path(s):
   return re_sec_path.sub(r"\1/\2", s)
 
-def write_text(t, p):
-  try:
-    f = open(p, "w")
-  except:
-    print "ERROR: Cannot file to write", p
-    return
-  f.write(t.encode("utf-8"))
-  f.close()
-
 def write_json(j, p):
   write_text(json.dumps(j, sort_keys=True, indent=1, ensure_ascii=False), p)
 
 def orderabledir(titre):
   extrazero = ''
-  titre2num = int(re.compile(r"\D.*$").sub('', titre))
-  if (titre2num < 10):
-    extrazero = '0'
+  try:
+    titre2num = int(re.compile(r"\D.*$").sub('', titre))
+    if (titre2num < 10):
+      extrazero = '0'
+  except:
+    pass
   return extrazero+re_cl_ids.sub('_', titre)
 
 re_cl_ids = re.compile(r"\s+")
@@ -57,25 +51,41 @@ try:
   FILE = sys.argv[1]
   f = open(FILE, "r")
 except:
-  print "ERROR: Cannot open json file", FILE
+  sys.stderr.write("ERROR: Cannot open json file %s\n" % FILE)
   sys.exit()
 
 mkdirs("data") 
 os.chdir("data")
+
+def log_err(txt, arg=None):
+    txt = "ERROR: %s" % txt
+    if arg:
+        txt += " %s" % arg
+    txt = "%s while working on %s\n" % (txt, FILE)
+    sys.stderr.write(txt)
+
+def write_text(t, p):
+  try:
+    f = open(p, "w")
+  except:
+    log_err("Cannot write to file %s" % p)
+    return
+  f.write(t.encode("utf-8"))
+  f.close()
 
 try:
   project = sys.argv[2]
   mkdirs(project)
   os.chdir(project)
 except:
-  print "ERROR: Cannot create dir for project", project
+  log_err("Cannot create dir for project %s" % project)
   sys.exit()
 
 textid = ""
 for l in f:
   data = json.loads(l)
-  if not "type" in data:
-    print "ERROR: JSON badly formatted, missing field type:", data
+  if not data or not "type" in data:
+    log_err("JSON %s badly formatted, missing field type: %s" % (f, data))
     sys.exit()
   if data["type"] == "texte":
     textid = data["id"]
@@ -83,7 +93,7 @@ for l in f:
     write_json(data, textid+".json")
     write_text(clean_text(data["titre"]), textid+".titre")
   elif textid == "":
-    print "ERROR: JSON missing first line with text infos"
+    log_err("JSON missing first line with text infos")
     sys.exit()
   elif data["type"] == "section":
     path = sec_path(data["id"])
