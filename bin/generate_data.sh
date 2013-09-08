@@ -24,9 +24,9 @@ cat $1 | while read line ; do
   mkdir "data/$projectdir/amendements"
   cd "data/$projectdir/amendements"
   chambre=$(echo $line | awk -F ';' '{print $7}')
-  urlchambre="http://www.nosdeputes.fr/frontend_dev.php/14/amendements/"
+  urlchambre="http://www.nosdeputes.fr/14/amendements/"
   if test "$chambre" = "senat"; then
-  	urlchambre="http://www.nossenateurs.fr/frontend_dev.php/amendements/"
+  	urlchambre="http://www.nossenateurs.fr/amendements/"
   fi
   curl -s $urlchambre"/"$amdidtext"/csv" > amendements.csv
   if grep [a-z] amendements.csv > /dev/null; then 
