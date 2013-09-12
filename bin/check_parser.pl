@@ -17,11 +17,11 @@ while(<STDIN>) {
     @csv = split(/;/);
     if (!$data[$csv[4]]) {
 	$data[$csv[4]] = $csv[6];
-    }elsif ($data[$csv[4]-1] ne 'CMP') {
+    }elsif ($data[$csv[4]-1] ne 'CMP' && $csv[4] ne 'EXTRA') {
 	print "$id: duplicated entry ".$csv[4]."\n";
 	$errors++;
     }
-    if ($csv[8] !~ /^http/) {
+    if ($csv[8] !~ /^http/ && $csv[4] ne 'EXTRA') {
 	print "$id: not valid url ".$csv[8]."\n" ;
 	$errors++;
     }elsif($csv[6] =~ /assemblee|senat/ && $csv[8] !~ /$csv[6]/) {
